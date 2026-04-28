@@ -1,0 +1,495 @@
+//@version=6
+indicator("Volume Weighted MACD Clouds v3", shorttitle="VWMACDv3", overlay=true, explicit_plot_zorder=true)
+
+// ───── Timeframe Multiplier
+grpTMul = "Timeframe Multiplier"
+Tmul    = input.float(1, "Timeframe", minval=1, step=1, group=grpTMul)
+
+// ───── VWMA settings
+grpVWMA    = "VWMA Settings"
+vwmaLen    = input.int(38, "VWMA Length", minval=1, group=grpVWMA)
+vwmaSrc    = input.source(close, "VWMA Source", group=grpVWMA)
+vwmaOffset = input.int(0, "VWMA Offset", minval=-500, maxval=500, group=grpVWMA)
+
+// ───── Multipliers (placed before MACD settings as requested)
+grpMult = "MACD Multipliers"
+mult1   = input.float(1.0, "Multiplier 1", minval=0.1, step=0.1, group=grpMult)
+mult2   = input.float(3.0, "Multiplier 2", minval=0.1, step=0.1, group=grpMult)
+mult3   = input.float(6.0, "Multiplier 3", minval=0.1, step=0.1, group=grpMult)
+mult4   = input.float(9.0, "Multiplier 4", minval=0.1, step=0.1, group=grpMult)
+mult5   = input.float(12.0, "Multiplier 5", minval=0.1, step=0.1, group=grpMult)
+mult6   = input.float(15.0, "Multiplier 6", minval=0.1, step=0.1, group=grpMult)
+
+// ───── MACD settings (base MACD1)
+grpMACD      = "MACD Settings"
+sourceInput  = input.source(close, "MACD Source", group=grpMACD)
+fastLenInput = input.int(12, "Fast Length", minval=1, group=grpMACD)
+slowLenInput = input.int(26, "Slow Length", minval=1, group=grpMACD)
+sigLenInput  = input.int(9, "Signal Length", minval=1, group=grpMACD)
+oscTypeInput = input.string("EMA", "Oscillator MA Type", options=["EMA", "SMA"], group=grpMACD)
+sigTypeInput = input.string("EMA", "Signal MA Type", options=["EMA", "SMA"], group=grpMACD)
+
+// ───── Visual controls: global
+grpVisualGlobal = "Visual Controls — Global"
+showAnchor      = input.bool(true, "Show VWMA Anchor", group=grpVisualGlobal)
+
+// ───── Visual controls: MACD1
+grpV1 = "Visual Controls — MACD1"
+showLines1   = input.bool(true, "Show MACD + Signal", group=grpV1)
+lineOffset1  = input.int(-6, "Shared Offset", minval=-500, maxval=500, group=grpV1)
+showCloud1   = input.bool(true, "Show MACD/Signal Cloud", group=grpV1)
+cloudOp1     = input.int(80, "Cloud Opacity", minval=0, maxval=100, group=grpV1)
+showHist1    = input.bool(true, "Show Histogram Area", group=grpV1)
+histOp1      = input.int(80, "Histogram Opacity", minval=0, maxval=100, group=grpV1)
+
+// ───── Visual controls: MACD2
+grpV2 = "Visual Controls — MACD2"
+showLines2   = input.bool(false, "Show MACD + Signal", group=grpV2)
+lineOffset2  = input.int(0, "Shared Offset", minval=-500, maxval=500, group=grpV2)
+showCloud2   = input.bool(true, "Show MACD/Signal Cloud", group=grpV2)
+cloudOp2     = input.int(80, "Cloud Opacity", minval=0, maxval=100, group=grpV2)
+showHist2    = input.bool(true, "Show Histogram Area", group=grpV2)
+histOp2      = input.int(80, "Histogram Opacity", minval=0, maxval=100, group=grpV2)
+
+// ───── Visual controls: MACD3
+grpV3 = "Visual Controls — MACD3"
+showLines3   = input.bool(true, "Show MACD + Signal", group=grpV3)
+lineOffset3  = input.int(6, "Shared Offset", minval=-500, maxval=500, group=grpV3)
+showCloud3   = input.bool(true, "Show MACD/Signal Cloud", group=grpV3)
+cloudOp3     = input.int(80, "Cloud Opacity", minval=0, maxval=100, group=grpV3)
+showHist3    = input.bool(true, "Show Histogram Area", group=grpV3)
+histOp3      = input.int(80, "Histogram Opacity", minval=0, maxval=100, group=grpV3)
+
+// ───── Visual controls: MACD4
+grpV4 = "Visual Controls — MACD4"
+showLines4   = input.bool(true, "Show MACD + Signal", group=grpV4)
+lineOffset4  = input.int(21, "Shared Offset", minval=-500, maxval=500, group=grpV4)
+showCloud4   = input.bool(true, "Show MACD/Signal Cloud", group=grpV4)
+cloudOp4     = input.int(80, "Cloud Opacity", minval=0, maxval=100, group=grpV4)
+showHist4    = input.bool(true, "Show Histogram Area", group=grpV4)
+histOp4      = input.int(80, "Histogram Opacity", minval=0, maxval=100, group=grpV4)
+
+// ───── Visual controls: MACD5
+grpV5 = "Visual Controls — MACD5"
+showLines5   = input.bool(false, "Show MACD + Signal", group=grpV5)
+lineOffset5  = input.int(0, "Shared Offset", minval=-500, maxval=500, group=grpV5)
+showCloud5   = input.bool(true, "Show MACD/Signal Cloud", group=grpV5)
+cloudOp5     = input.int(70, "Cloud Opacity", minval=0, maxval=100, group=grpV5)
+showHist5    = input.bool(true, "Show Histogram Area", group=grpV5)
+histOp5      = input.int(80, "Histogram Opacity", minval=0, maxval=100, group=grpV5)
+
+// ───── Visual controls: MACD6
+grpV6 = "Visual Controls — MACD6"
+showLines6   = input.bool(false, "Show MACD + Signal", group=grpV6)
+lineOffset6  = input.int(0, "Shared Offset", minval=-500, maxval=500, group=grpV6)
+showCloud6   = input.bool(true, "Show MACD/Signal Cloud", group=grpV6)
+cloudOp6     = input.int(70, "Cloud Opacity", minval=0, maxval=100, group=grpV6)
+showHist6    = input.bool(true, "Show Histogram Area", group=grpV6)
+histOp6      = input.int(80, "Histogram Opacity", minval=0, maxval=100, group=grpV6)
+
+// ───── Histogram/cloud colors (shared)
+grpColors  = "Histogram / Cloud Colors"
+colPosRise = input.color(#26A69A, "Positive Rising", group=grpColors)
+colPosFall = input.color(#B2DFDB, "Positive Falling", group=grpColors)
+colNegRise = input.color(#FFCDD2, "Negative Rising", group=grpColors)
+colNegFall = input.color(#FF5252, "Negative Falling", group=grpColors)
+
+// ───── Baseline signal logic
+grpSig = "Signal Logic"
+showSignals = input.bool(true, "Show Long/Short Signals", group=grpSig)
+showTP_SL = input.bool(true, "Show TP/SL Projection", group=grpSig)
+projBars = input.int(30, "TP/SL Projection Bars", minval=1, maxval=500, group=grpSig)
+showDebug = input.bool(false, "Show Debug Markers", group=grpSig)
+
+grpS1 = "Setup 1"
+s1Enabled = input.bool(true, "Enable Setup 1", group=grpS1)
+s1Logic = input.string("AND", "Setup Logic", options=["AND", "OR"], group=grpS1)
+s1CondCount = input.int(10, "Conditions Used", minval=1, maxval=10, group=grpS1)
+s1L1 = input.string("MACD1", "Cond 1 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O1 = input.string(">", "Cond 1 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R1 = input.string("MACD4", "Cond 1 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L2 = input.string("Signal1", "Cond 2 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O2 = input.string(">", "Cond 2 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R2 = input.string("Signal4", "Cond 2 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L3 = input.string("Close", "Cond 3 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O3 = input.string(">", "Cond 3 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R3 = input.string("VWMA", "Cond 3 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L4 = input.string("MACD2", "Cond 4 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O4 = input.string(">", "Cond 4 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R4 = input.string("MACD5", "Cond 4 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L5 = input.string("Signal2", "Cond 5 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O5 = input.string(">", "Cond 5 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R5 = input.string("Signal5", "Cond 5 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L6 = input.string("MACD3", "Cond 6 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O6 = input.string(">", "Cond 6 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R6 = input.string("MACD6", "Cond 6 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L7 = input.string("Signal3", "Cond 7 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O7 = input.string(">", "Cond 7 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R7 = input.string("Signal6", "Cond 7 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L8 = input.string("MACD1", "Cond 8 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O8 = input.string("Crosses Above", "Cond 8 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R8 = input.string("Signal1", "Cond 8 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L9 = input.string("MACD2", "Cond 9 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O9 = input.string("Crosses Above", "Cond 9 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R9 = input.string("Signal2", "Cond 9 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1L10 = input.string("MACD4", "Cond 10 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+s1O10 = input.string(">", "Cond 10 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS1)
+s1R10 = input.string("VWMA", "Cond 10 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS1)
+
+grpS2 = "Setup 2"
+s2Enabled = input.bool(false, "Enable Setup 2", group=grpS2)
+s2Logic = input.string("AND", "Setup Logic", options=["AND", "OR"], group=grpS2)
+s2CondCount = input.int(10, "Conditions Used", minval=1, maxval=10, group=grpS2)
+s2L1 = input.string("MACD1", "Cond 1 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O1 = input.string(">", "Cond 1 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R1 = input.string("MACD4", "Cond 1 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L2 = input.string("Signal1", "Cond 2 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O2 = input.string(">", "Cond 2 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R2 = input.string("Signal4", "Cond 2 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L3 = input.string("Close", "Cond 3 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O3 = input.string(">", "Cond 3 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R3 = input.string("VWMA", "Cond 3 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L4 = input.string("MACD2", "Cond 4 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O4 = input.string(">", "Cond 4 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R4 = input.string("MACD5", "Cond 4 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L5 = input.string("Signal2", "Cond 5 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O5 = input.string(">", "Cond 5 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R5 = input.string("Signal5", "Cond 5 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L6 = input.string("MACD3", "Cond 6 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O6 = input.string(">", "Cond 6 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R6 = input.string("MACD6", "Cond 6 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L7 = input.string("Signal3", "Cond 7 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O7 = input.string(">", "Cond 7 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R7 = input.string("Signal6", "Cond 7 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L8 = input.string("MACD1", "Cond 8 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O8 = input.string("Crosses Above", "Cond 8 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R8 = input.string("Signal1", "Cond 8 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L9 = input.string("MACD2", "Cond 9 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O9 = input.string("Crosses Above", "Cond 9 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R9 = input.string("Signal2", "Cond 9 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2L10 = input.string("MACD4", "Cond 10 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+s2O10 = input.string(">", "Cond 10 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS2)
+s2R10 = input.string("VWMA", "Cond 10 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS2)
+
+grpS3 = "Setup 3"
+s3Enabled = input.bool(false, "Enable Setup 3", group=grpS3)
+s3Logic = input.string("AND", "Setup Logic", options=["AND", "OR"], group=grpS3)
+s3CondCount = input.int(10, "Conditions Used", minval=1, maxval=10, group=grpS3)
+s3L1 = input.string("MACD1", "Cond 1 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O1 = input.string(">", "Cond 1 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R1 = input.string("MACD4", "Cond 1 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L2 = input.string("Signal1", "Cond 2 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O2 = input.string(">", "Cond 2 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R2 = input.string("Signal4", "Cond 2 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L3 = input.string("Close", "Cond 3 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O3 = input.string(">", "Cond 3 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R3 = input.string("VWMA", "Cond 3 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L4 = input.string("MACD2", "Cond 4 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O4 = input.string(">", "Cond 4 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R4 = input.string("MACD5", "Cond 4 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L5 = input.string("Signal2", "Cond 5 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O5 = input.string(">", "Cond 5 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R5 = input.string("Signal5", "Cond 5 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L6 = input.string("MACD3", "Cond 6 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O6 = input.string(">", "Cond 6 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R6 = input.string("MACD6", "Cond 6 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L7 = input.string("Signal3", "Cond 7 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O7 = input.string(">", "Cond 7 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R7 = input.string("Signal6", "Cond 7 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L8 = input.string("MACD1", "Cond 8 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O8 = input.string("Crosses Above", "Cond 8 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R8 = input.string("Signal1", "Cond 8 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L9 = input.string("MACD2", "Cond 9 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O9 = input.string("Crosses Above", "Cond 9 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R9 = input.string("Signal2", "Cond 9 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3L10 = input.string("MACD4", "Cond 10 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+s3O10 = input.string(">", "Cond 10 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS3)
+s3R10 = input.string("VWMA", "Cond 10 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS3)
+
+grpS4 = "Setup 4"
+s4Enabled = input.bool(false, "Enable Setup 4", group=grpS4)
+s4Logic = input.string("AND", "Setup Logic", options=["AND", "OR"], group=grpS4)
+s4CondCount = input.int(10, "Conditions Used", minval=1, maxval=10, group=grpS4)
+s4L1 = input.string("MACD1", "Cond 1 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O1 = input.string(">", "Cond 1 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R1 = input.string("MACD4", "Cond 1 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L2 = input.string("Signal1", "Cond 2 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O2 = input.string(">", "Cond 2 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R2 = input.string("Signal4", "Cond 2 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L3 = input.string("Close", "Cond 3 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O3 = input.string(">", "Cond 3 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R3 = input.string("VWMA", "Cond 3 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L4 = input.string("MACD2", "Cond 4 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O4 = input.string(">", "Cond 4 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R4 = input.string("MACD5", "Cond 4 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L5 = input.string("Signal2", "Cond 5 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O5 = input.string(">", "Cond 5 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R5 = input.string("Signal5", "Cond 5 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L6 = input.string("MACD3", "Cond 6 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O6 = input.string(">", "Cond 6 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R6 = input.string("MACD6", "Cond 6 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L7 = input.string("Signal3", "Cond 7 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O7 = input.string(">", "Cond 7 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R7 = input.string("Signal6", "Cond 7 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L8 = input.string("MACD1", "Cond 8 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O8 = input.string("Crosses Above", "Cond 8 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R8 = input.string("Signal1", "Cond 8 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L9 = input.string("MACD2", "Cond 9 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O9 = input.string("Crosses Above", "Cond 9 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R9 = input.string("Signal2", "Cond 9 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4L10 = input.string("MACD4", "Cond 10 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+s4O10 = input.string(">", "Cond 10 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS4)
+s4R10 = input.string("VWMA", "Cond 10 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS4)
+
+grpS5 = "Setup 5"
+s5Enabled = input.bool(false, "Enable Setup 5", group=grpS5)
+s5Logic = input.string("AND", "Setup Logic", options=["AND", "OR"], group=grpS5)
+s5CondCount = input.int(10, "Conditions Used", minval=1, maxval=10, group=grpS5)
+s5L1 = input.string("MACD1", "Cond 1 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O1 = input.string(">", "Cond 1 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R1 = input.string("MACD4", "Cond 1 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L2 = input.string("Signal1", "Cond 2 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O2 = input.string(">", "Cond 2 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R2 = input.string("Signal4", "Cond 2 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L3 = input.string("Close", "Cond 3 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O3 = input.string(">", "Cond 3 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R3 = input.string("VWMA", "Cond 3 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L4 = input.string("MACD2", "Cond 4 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O4 = input.string(">", "Cond 4 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R4 = input.string("MACD5", "Cond 4 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L5 = input.string("Signal2", "Cond 5 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O5 = input.string(">", "Cond 5 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R5 = input.string("Signal5", "Cond 5 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L6 = input.string("MACD3", "Cond 6 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O6 = input.string(">", "Cond 6 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R6 = input.string("MACD6", "Cond 6 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L7 = input.string("Signal3", "Cond 7 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O7 = input.string(">", "Cond 7 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R7 = input.string("Signal6", "Cond 7 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L8 = input.string("MACD1", "Cond 8 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O8 = input.string("Crosses Above", "Cond 8 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R8 = input.string("Signal1", "Cond 8 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L9 = input.string("MACD2", "Cond 9 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O9 = input.string("Crosses Above", "Cond 9 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R9 = input.string("Signal2", "Cond 9 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5L10 = input.string("MACD4", "Cond 10 Left", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+s5O10 = input.string(">", "Cond 10 Op", options=[">", "<", "Crosses Above", "Crosses Below"], group=grpS5)
+s5R10 = input.string("VWMA", "Cond 10 Right", options=["MACD1", "Signal1", "MACD2", "Signal2", "MACD3", "Signal3", "MACD4", "Signal4", "MACD5", "Signal5", "MACD6", "Signal6", "Close", "Open", "VWMA"], group=grpS5)
+
+toLen(x) =>
+    math.max(1, int(math.round(x)))
+
+ma(_src, _length, _maType) =>
+    switch _maType
+        "EMA" => ta.ema(_src, _length)
+        "SMA" => ta.sma(_src, _length)
+
+macdPack(_src, _fast, _slow, _sig, _oscType, _sigType) =>
+    f = toLen(_fast)
+    s = toLen(_slow)
+    g = toLen(_sig)
+    fast = ma(_src, f, _oscType)
+    slow = ma(_src, s, _oscType)
+    m = fast - slow
+    sg = ma(m, g, _sigType)
+    h = m - sg
+    [m, sg, h]
+
+histStateColor(_hist) =>
+    _hist >= 0 ? (_hist > _hist[1] ? colPosRise : colPosFall) : (_hist > _hist[1] ? colNegRise : colNegFall)
+
+anchor = ta.vwma(vwmaSrc, vwmaLen)
+anchorTM = ta.vwma(vwmaSrc, vwmaLen) * Tmul
+
+// MACD1 (base)
+[m1, s1, h1] = macdPack(sourceInput, fastLenInput * mult1, slowLenInput * mult1, sigLenInput * mult1, oscTypeInput, sigTypeInput)
+// MACD2..6 (multiplier derived)
+[m2, s2, h2] = macdPack(sourceInput, fastLenInput * mult2, slowLenInput * mult2, sigLenInput * mult2, oscTypeInput, sigTypeInput)
+[m3, s3, h3] = macdPack(sourceInput, fastLenInput * mult3, slowLenInput * mult3, sigLenInput * mult3, oscTypeInput, sigTypeInput)
+[m4, s4, h4] = macdPack(sourceInput, fastLenInput * mult4, slowLenInput * mult4, sigLenInput * mult4, oscTypeInput, sigTypeInput)
+[m5, s5, h5] = macdPack(sourceInput, fastLenInput * mult5, slowLenInput * mult5, sigLenInput * mult5, oscTypeInput, sigTypeInput)
+[m6, s6, h6] = macdPack(sourceInput, fastLenInput * mult6, slowLenInput * mult6, sigLenInput * mult6, oscTypeInput, sigTypeInput)
+
+m1Px = (anchor + m1) * Tmul, s1Px = (anchor + s1) * Tmul, h1Px = (anchor + h1) * Tmul
+m2Px = (anchor + m2) * Tmul, s2Px = (anchor + s2) * Tmul, h2Px = (anchor + h2) * Tmul
+m3Px = (anchor + m3) * Tmul, s3Px = (anchor + s3) * Tmul, h3Px = (anchor + h3) * Tmul
+m4Px = (anchor + m4) * Tmul, s4Px = (anchor + s4) * Tmul, h4Px = (anchor + h4) * Tmul
+m5Px = (anchor + m5) * Tmul, s5Px = (anchor + s5) * Tmul, h5Px = (anchor + h5) * Tmul
+m6Px = (anchor + m6) * Tmul, s6Px = (anchor + s6) * Tmul, h6Px = (anchor + h6) * Tmul
+
+c1 = histStateColor(h1)
+c2 = histStateColor(h2)
+c3 = histStateColor(h3)
+c4 = histStateColor(h4)
+c5 = histStateColor(h5)
+c6 = histStateColor(h6)
+
+seriesByName(_name) =>
+    switch _name
+        "MACD1" => m1Px
+        "Signal1" => s1Px
+        "MACD2" => m2Px
+        "Signal2" => s2Px
+        "MACD3" => m3Px
+        "Signal3" => s3Px
+        "MACD4" => m4Px
+        "Signal4" => s4Px
+        "MACD5" => m5Px
+        "Signal5" => s5Px
+        "MACD6" => m6Px
+        "Signal6" => s6Px
+        "Close" => close
+        "Open" => open
+        => anchor
+
+offsetByName(_name) =>
+    switch _name
+        "MACD1" => lineOffset1
+        "Signal1" => lineOffset1
+        "MACD2" => lineOffset2
+        "Signal2" => lineOffset2
+        "MACD3" => lineOffset3
+        "Signal3" => lineOffset3
+        "MACD4" => lineOffset4
+        "Signal4" => lineOffset4
+        "MACD5" => lineOffset5
+        "Signal5" => lineOffset5
+        "MACD6" => lineOffset6
+        "Signal6" => lineOffset6
+        "Close" => 0
+        "Open" => 0
+        => vwmaOffset
+
+mirrorOp(_op) =>
+    _op == ">" ? "<" : _op == "<" ? ">" : _op == "Crosses Above" ? "Crosses Below" : "Crosses Above"
+
+evalCond(_l, _op, _r, _isShort) =>
+    opUse = _isShort ? mirrorOp(_op) : _op
+    leftV = seriesByName(_l)
+    rightBase = seriesByName(_r)
+    leftOffset = offsetByName(_l)
+    rightOffset = offsetByName(_r)
+    shiftBars = rightOffset - leftOffset
+    rightV = shiftBars >= 0 ? rightBase[shiftBars] : na
+    opUse == ">" ? leftV > rightV : opUse == "<" ? leftV < rightV : opUse == "Crosses Above" ? ta.crossover(leftV, rightV) : ta.crossunder(leftV, rightV)
+
+combineConds(_logic, _count, _c1, _c2, _c3, _c4, _c5, _c6, _c7, _c8, _c9, _c10) =>
+    useAnd = _logic == "AND"
+    c2Use = _count >= 2 ? _c2 : useAnd ? true : false
+    c3Use = _count >= 3 ? _c3 : useAnd ? true : false
+    c4Use = _count >= 4 ? _c4 : useAnd ? true : false
+    c5Use = _count >= 5 ? _c5 : useAnd ? true : false
+    c6Use = _count >= 6 ? _c6 : useAnd ? true : false
+    c7Use = _count >= 7 ? _c7 : useAnd ? true : false
+    c8Use = _count >= 8 ? _c8 : useAnd ? true : false
+    c9Use = _count >= 9 ? _c9 : useAnd ? true : false
+    c10Use = _count >= 10 ? _c10 : useAnd ? true : false
+    useAnd ? (_c1 and c2Use and c3Use and c4Use and c5Use and c6Use and c7Use and c8Use and c9Use and c10Use) : (_c1 or c2Use or c3Use or c4Use or c5Use or c6Use or c7Use or c8Use or c9Use or c10Use)
+
+s1Long = s1Enabled ? combineConds(s1Logic, s1CondCount, evalCond(s1L1, s1O1, s1R1, false), evalCond(s1L2, s1O2, s1R2, false), evalCond(s1L3, s1O3, s1R3, false), evalCond(s1L4, s1O4, s1R4, false), evalCond(s1L5, s1O5, s1R5, false), evalCond(s1L6, s1O6, s1R6, false), evalCond(s1L7, s1O7, s1R7, false), evalCond(s1L8, s1O8, s1R8, false), evalCond(s1L9, s1O9, s1R9, false), evalCond(s1L10, s1O10, s1R10, false)) : false
+s2Long = s2Enabled ? combineConds(s2Logic, s2CondCount, evalCond(s2L1, s2O1, s2R1, false), evalCond(s2L2, s2O2, s2R2, false), evalCond(s2L3, s2O3, s2R3, false), evalCond(s2L4, s2O4, s2R4, false), evalCond(s2L5, s2O5, s2R5, false), evalCond(s2L6, s2O6, s2R6, false), evalCond(s2L7, s2O7, s2R7, false), evalCond(s2L8, s2O8, s2R8, false), evalCond(s2L9, s2O9, s2R9, false), evalCond(s2L10, s2O10, s2R10, false)) : false
+s3Long = s3Enabled ? combineConds(s3Logic, s3CondCount, evalCond(s3L1, s3O1, s3R1, false), evalCond(s3L2, s3O2, s3R2, false), evalCond(s3L3, s3O3, s3R3, false), evalCond(s3L4, s3O4, s3R4, false), evalCond(s3L5, s3O5, s3R5, false), evalCond(s3L6, s3O6, s3R6, false), evalCond(s3L7, s3O7, s3R7, false), evalCond(s3L8, s3O8, s3R8, false), evalCond(s3L9, s3O9, s3R9, false), evalCond(s3L10, s3O10, s3R10, false)) : false
+s4Long = s4Enabled ? combineConds(s4Logic, s4CondCount, evalCond(s4L1, s4O1, s4R1, false), evalCond(s4L2, s4O2, s4R2, false), evalCond(s4L3, s4O3, s4R3, false), evalCond(s4L4, s4O4, s4R4, false), evalCond(s4L5, s4O5, s4R5, false), evalCond(s4L6, s4O6, s4R6, false), evalCond(s4L7, s4O7, s4R7, false), evalCond(s4L8, s4O8, s4R8, false), evalCond(s4L9, s4O9, s4R9, false), evalCond(s4L10, s4O10, s4R10, false)) : false
+s5Long = s5Enabled ? combineConds(s5Logic, s5CondCount, evalCond(s5L1, s5O1, s5R1, false), evalCond(s5L2, s5O2, s5R2, false), evalCond(s5L3, s5O3, s5R3, false), evalCond(s5L4, s5O4, s5R4, false), evalCond(s5L5, s5O5, s5R5, false), evalCond(s5L6, s5O6, s5R6, false), evalCond(s5L7, s5O7, s5R7, false), evalCond(s5L8, s5O8, s5R8, false), evalCond(s5L9, s5O9, s5R9, false), evalCond(s5L10, s5O10, s5R10, false)) : false
+s1Short = s1Enabled ? combineConds(s1Logic, s1CondCount, evalCond(s1L1, s1O1, s1R1, true), evalCond(s1L2, s1O2, s1R2, true), evalCond(s1L3, s1O3, s1R3, true), evalCond(s1L4, s1O4, s1R4, true), evalCond(s1L5, s1O5, s1R5, true), evalCond(s1L6, s1O6, s1R6, true), evalCond(s1L7, s1O7, s1R7, true), evalCond(s1L8, s1O8, s1R8, true), evalCond(s1L9, s1O9, s1R9, true), evalCond(s1L10, s1O10, s1R10, true)) : false
+s2Short = s2Enabled ? combineConds(s2Logic, s2CondCount, evalCond(s2L1, s2O1, s2R1, true), evalCond(s2L2, s2O2, s2R2, true), evalCond(s2L3, s2O3, s2R3, true), evalCond(s2L4, s2O4, s2R4, true), evalCond(s2L5, s2O5, s2R5, true), evalCond(s2L6, s2O6, s2R6, true), evalCond(s2L7, s2O7, s2R7, true), evalCond(s2L8, s2O8, s2R8, true), evalCond(s2L9, s2O9, s2R9, true), evalCond(s2L10, s2O10, s2R10, true)) : false
+s3Short = s3Enabled ? combineConds(s3Logic, s3CondCount, evalCond(s3L1, s3O1, s3R1, true), evalCond(s3L2, s3O2, s3R2, true), evalCond(s3L3, s3O3, s3R3, true), evalCond(s3L4, s3O4, s3R4, true), evalCond(s3L5, s3O5, s3R5, true), evalCond(s3L6, s3O6, s3R6, true), evalCond(s3L7, s3O7, s3R7, true), evalCond(s3L8, s3O8, s3R8, true), evalCond(s3L9, s3O9, s3R9, true), evalCond(s3L10, s3O10, s3R10, true)) : false
+s4Short = s4Enabled ? combineConds(s4Logic, s4CondCount, evalCond(s4L1, s4O1, s4R1, true), evalCond(s4L2, s4O2, s4R2, true), evalCond(s4L3, s4O3, s4R3, true), evalCond(s4L4, s4O4, s4R4, true), evalCond(s4L5, s4O5, s4R5, true), evalCond(s4L6, s4O6, s4R6, true), evalCond(s4L7, s4O7, s4R7, true), evalCond(s4L8, s4O8, s4R8, true), evalCond(s4L9, s4O9, s4R9, true), evalCond(s4L10, s4O10, s4R10, true)) : false
+s5Short = s5Enabled ? combineConds(s5Logic, s5CondCount, evalCond(s5L1, s5O1, s5R1, true), evalCond(s5L2, s5O2, s5R2, true), evalCond(s5L3, s5O3, s5R3, true), evalCond(s5L4, s5O4, s5R4, true), evalCond(s5L5, s5O5, s5R5, true), evalCond(s5L6, s5O6, s5R6, true), evalCond(s5L7, s5O7, s5R7, true), evalCond(s5L8, s5O8, s5R8, true), evalCond(s5L9, s5O9, s5R9, true), evalCond(s5L10, s5O10, s5R10, true)) : false
+
+longState = s1Long or s2Long or s3Long or s4Long or s5Long
+shortState = s1Short or s2Short or s3Short or s4Short or s5Short
+
+longSetup = longState and not longState[1]
+shortSetup = shortState and not shortState[1]
+
+buySignal = longSetup[1]
+sellSignal = shortSetup[1]
+
+m4Visual = m4Px
+buyEntry = open
+buySL = m4Visual[1]
+buyRisk = buyEntry - buySL
+buyTP = buyEntry + buyRisk
+sellEntry = open
+sellSL = m4Visual[1]
+sellRisk = sellSL - sellEntry
+sellTP = sellEntry - sellRisk
+
+plotshape(showSignals and buySignal and buyRisk > 0, title="Buy Signal", style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small, text="Buy")
+plotshape(showSignals and sellSignal and sellRisk > 0, title="Short Signal", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, text="Short")
+
+plotshape(showDebug and longSetup, title="Long Setup Debug", style=shape.circle, location=location.belowbar, color=color.new(color.lime, 0), size=size.tiny, text="LS")
+plotshape(showDebug and shortSetup, title="Short Setup Debug", style=shape.circle, location=location.abovebar, color=color.new(color.red, 0), size=size.tiny, text="SS")
+plotshape(showDebug and buySignal, title="Buy Trigger Debug", style=shape.square, location=location.belowbar, color=color.new(color.aqua, 0), size=size.tiny, text="BT")
+plotshape(showDebug and sellSignal, title="Sell Trigger Debug", style=shape.square, location=location.abovebar, color=color.new(color.orange, 0), size=size.tiny, text="ST")
+
+if showTP_SL and buySignal and buyRisk > 0
+    line.new(bar_index, buySL, bar_index + projBars, buySL, xloc=xloc.bar_index, extend=extend.none, color=color.red, width=1, style=line.style_dashed)
+    line.new(bar_index, buyTP, bar_index + projBars, buyTP, xloc=xloc.bar_index, extend=extend.none, color=color.lime, width=1, style=line.style_dashed)
+
+if showTP_SL and sellSignal and sellRisk > 0
+    line.new(bar_index, sellSL, bar_index + projBars, sellSL, xloc=xloc.bar_index, extend=extend.none, color=color.red, width=1, style=line.style_dashed)
+    line.new(bar_index, sellTP, bar_index + projBars, sellTP, xloc=xloc.bar_index, extend=extend.none, color=color.lime, width=1, style=line.style_dashed)
+
+plot(showAnchor ? anchorTM : na, "VWMA Anchor (Zero Line)", color=color.white, linewidth=2, offset=vwmaOffset)
+
+// MACD1
+plot(showLines1 ? m1Px : na, "Anchored MACD1", color=color.aqua, linewidth=2, offset=lineOffset1)
+plot(showLines1 ? s1Px : na, "Anchored Signal1", color=color.orange, linewidth=2, offset=lineOffset1)
+pM1 = plot(showCloud1 ? m1Px : na, "MACD1 Cloud Helper M", color=na, display=display.none)
+pS1 = plot(showCloud1 ? s1Px : na, "MACD1 Cloud Helper S", color=na, display=display.none)
+fill(pM1, pS1, color=showCloud1 ? color.new(c1, cloudOp1) : na, title="MACD1 Cloud")
+pA1 = plot(showHist1 ? anchor : na, "MACD1 Hist Anchor", color=na, display=display.none)
+pH1 = plot(showHist1 ? h1Px : na, "MACD1 Hist", color=na, display=display.none)
+fill(pA1, pH1, color=showHist1 ? color.new(c1, histOp1) : na, title="MACD1 Histogram Area")
+
+// MACD2
+plot(showLines2 ? m2Px : na, "Anchored MACD2", color=color.rgb(0, 85, 212), linewidth=2, offset=lineOffset2)
+plot(showLines2 ? s2Px : na, "Anchored Signal2", color=color.rgb(255, 102, 0), linewidth=2, offset=lineOffset2)
+pM2 = plot(showCloud2 ? m2Px : na, "MACD2 Cloud Helper M", color=na, display=display.none)
+pS2 = plot(showCloud2 ? s2Px : na, "MACD2 Cloud Helper S", color=na, display=display.none)
+fill(pM2, pS2, color=showCloud2 ? color.new(c2, cloudOp2) : na, title="MACD2 Cloud")
+pA2 = plot(showHist2 ? anchor : na, "MACD2 Hist Anchor", color=na, display=display.none)
+pH2 = plot(showHist2 ? h2Px : na, "MACD2 Hist", color=na, display=display.none)
+fill(pA2, pH2, color=showHist2 ? color.new(c2, histOp2) : na, title="MACD2 Histogram Area")
+
+// MACD3
+plot(showLines3 ? m3Px : na, "Anchored MACD3", color=color.rgb(0, 67, 212), linewidth=2, offset=lineOffset3)
+plot(showLines3 ? s3Px : na, "Anchored Signal3", color=color.rgb(255, 94, 0), linewidth=2, offset=lineOffset3)
+pM3 = plot(showCloud3 ? m3Px : na, "MACD3 Cloud Helper M", color=na, display=display.none)
+pS3 = plot(showCloud3 ? s3Px : na, "MACD3 Cloud Helper S", color=na, display=display.none)
+fill(pM3, pS3, color=showCloud3 ? color.new(c3, cloudOp3) : na, title="MACD3 Cloud")
+pA3 = plot(showHist3 ? anchor : na, "MACD3 Hist Anchor", color=na, display=display.none)
+pH3 = plot(showHist3 ? h3Px : na, "MACD3 Hist", color=na, display=display.none)
+fill(pA3, pH3, color=showHist3 ? color.new(c3, histOp3) : na, title="MACD3 Histogram Area")
+
+// MACD4
+plot(showLines4 ? m4Px : na, "Anchored MACD4", color=color.rgb(14, 0, 212), linewidth=2, offset=lineOffset4)
+plot(showLines4 ? s4Px : na, "Anchored Signal4", color=color.rgb(255, 0, 0), linewidth=2, offset=lineOffset4)
+pM4 = plot(showCloud4 ? m4Px : na, "MACD4 Cloud Helper M", color=na, display=display.none)
+pS4 = plot(showCloud4 ? s4Px : na, "MACD4 Cloud Helper S", color=na, display=display.none)
+fill(pM4, pS4, color=showCloud4 ? color.new(c4, cloudOp4) : na, title="MACD4 Cloud")
+pA4 = plot(showHist4 ? anchor : na, "MACD4 Hist Anchor", color=na, display=display.none)
+pH4 = plot(showHist4 ? h4Px : na, "MACD4 Hist", color=na, display=display.none)
+fill(pA4, pH4, color=showHist4 ? color.new(c4, histOp4) : na, title="MACD4 Histogram Area")
+
+// MACD5
+plot(showLines5 ? m5Px : na, "Anchored MACD5", color=color.aqua, linewidth=2, offset=lineOffset5)
+plot(showLines5 ? s5Px : na, "Anchored Signal5", color=color.orange, linewidth=2, offset=lineOffset5)
+pM5 = plot(showCloud5 ? m5Px : na, "MACD5 Cloud Helper M", color=na, display=display.none)
+pS5 = plot(showCloud5 ? s5Px : na, "MACD5 Cloud Helper S", color=na, display=display.none)
+fill(pM5, pS5, color=showCloud5 ? color.new(c5, cloudOp5) : na, title="MACD5 Cloud")
+pA5 = plot(showHist5 ? anchor : na, "MACD5 Hist Anchor", color=na, display=display.none)
+pH5 = plot(showHist5 ? h5Px : na, "MACD5 Hist", color=na, display=display.none)
+fill(pA5, pH5, color=showHist5 ? color.new(c5, histOp5) : na, title="MACD5 Histogram Area")
+
+// MACD6
+plot(showLines6 ? m6Px : na, "Anchored MACD6", color=color.aqua, linewidth=2, offset=lineOffset6)
+plot(showLines6 ? s6Px : na, "Anchored Signal6", color=color.orange, linewidth=2, offset=lineOffset6)
+pM6 = plot(showCloud6 ? m6Px : na, "MACD6 Cloud Helper M", color=na, display=display.none)
+pS6 = plot(showCloud6 ? s6Px : na, "MACD6 Cloud Helper S", color=na, display=display.none)
+fill(pM6, pS6, color=showCloud6 ? color.new(c6, cloudOp6) : na, title="MACD6 Cloud")
+pA6 = plot(showHist6 ? anchor : na, "MACD6 Hist Anchor", color=na, display=display.none)
+pH6 = plot(showHist6 ? h6Px : na, "MACD6 Hist", color=na, display=display.none)
+fill(pA6, pH6, color=showHist6 ? color.new(c6, histOp6) : na, title="MACD6 Histogram Area")
