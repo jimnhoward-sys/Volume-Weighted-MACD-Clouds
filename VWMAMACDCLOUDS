@@ -1,10 +1,6 @@
 //@version=6
 indicator("Volume Weighted MACD Clouds v3", shorttitle="VWMACDv3", overlay=true, explicit_plot_zorder=true)
 
-// ───── Timeframe Multiplier
-grpTMul = "Timeframe Multiplier"
-Tmul    = input.float(1, "Timeframe", minval=1, step=1, group=grpTMul)
-
 // ───── VWMA settings
 grpVWMA    = "VWMA Settings"
 vwmaLen    = input.int(38, "VWMA Length", minval=1, group=grpVWMA)
@@ -13,7 +9,6 @@ vwmaOffset = input.int(0, "VWMA Offset", minval=-500, maxval=500, group=grpVWMA)
 
 // ───── Multipliers (placed before MACD settings as requested)
 grpMult = "MACD Multipliers"
-mult1   = input.float(1.0, "Multiplier 1", minval=0.1, step=0.1, group=grpMult)
 mult2   = input.float(3.0, "Multiplier 2", minval=0.1, step=0.1, group=grpMult)
 mult3   = input.float(6.0, "Multiplier 3", minval=0.1, step=0.1, group=grpMult)
 mult4   = input.float(9.0, "Multiplier 4", minval=0.1, step=0.1, group=grpMult)
@@ -299,10 +294,9 @@ histStateColor(_hist) =>
     _hist >= 0 ? (_hist > _hist[1] ? colPosRise : colPosFall) : (_hist > _hist[1] ? colNegRise : colNegFall)
 
 anchor = ta.vwma(vwmaSrc, vwmaLen)
-anchorTM = ta.vwma(vwmaSrc, vwmaLen) * Tmul
 
 // MACD1 (base)
-[m1, s1, h1] = macdPack(sourceInput, fastLenInput * mult1, slowLenInput * mult1, sigLenInput * mult1, oscTypeInput, sigTypeInput)
+[m1, s1, h1] = macdPack(sourceInput, fastLenInput, slowLenInput, sigLenInput, oscTypeInput, sigTypeInput)
 // MACD2..6 (multiplier derived)
 [m2, s2, h2] = macdPack(sourceInput, fastLenInput * mult2, slowLenInput * mult2, sigLenInput * mult2, oscTypeInput, sigTypeInput)
 [m3, s3, h3] = macdPack(sourceInput, fastLenInput * mult3, slowLenInput * mult3, sigLenInput * mult3, oscTypeInput, sigTypeInput)
@@ -310,12 +304,12 @@ anchorTM = ta.vwma(vwmaSrc, vwmaLen) * Tmul
 [m5, s5, h5] = macdPack(sourceInput, fastLenInput * mult5, slowLenInput * mult5, sigLenInput * mult5, oscTypeInput, sigTypeInput)
 [m6, s6, h6] = macdPack(sourceInput, fastLenInput * mult6, slowLenInput * mult6, sigLenInput * mult6, oscTypeInput, sigTypeInput)
 
-m1Px = (anchor + m1) * Tmul, s1Px = (anchor + s1) * Tmul, h1Px = (anchor + h1) * Tmul
-m2Px = (anchor + m2) * Tmul, s2Px = (anchor + s2) * Tmul, h2Px = (anchor + h2) * Tmul
-m3Px = (anchor + m3) * Tmul, s3Px = (anchor + s3) * Tmul, h3Px = (anchor + h3) * Tmul
-m4Px = (anchor + m4) * Tmul, s4Px = (anchor + s4) * Tmul, h4Px = (anchor + h4) * Tmul
-m5Px = (anchor + m5) * Tmul, s5Px = (anchor + s5) * Tmul, h5Px = (anchor + h5) * Tmul
-m6Px = (anchor + m6) * Tmul, s6Px = (anchor + s6) * Tmul, h6Px = (anchor + h6) * Tmul
+m1Px = anchor + m1, s1Px = anchor + s1, h1Px = anchor + h1
+m2Px = anchor + m2, s2Px = anchor + s2, h2Px = anchor + h2
+m3Px = anchor + m3, s3Px = anchor + s3, h3Px = anchor + h3
+m4Px = anchor + m4, s4Px = anchor + s4, h4Px = anchor + h4
+m5Px = anchor + m5, s5Px = anchor + s5, h5Px = anchor + h5
+m6Px = anchor + m6, s6Px = anchor + s6, h6Px = anchor + h6
 
 c1 = histStateColor(h1)
 c2 = histStateColor(h2)
@@ -432,7 +426,7 @@ if showTP_SL and sellSignal and sellRisk > 0
     line.new(bar_index, sellSL, bar_index + projBars, sellSL, xloc=xloc.bar_index, extend=extend.none, color=color.red, width=1, style=line.style_dashed)
     line.new(bar_index, sellTP, bar_index + projBars, sellTP, xloc=xloc.bar_index, extend=extend.none, color=color.lime, width=1, style=line.style_dashed)
 
-plot(showAnchor ? anchorTM : na, "VWMA Anchor (Zero Line)", color=color.white, linewidth=2, offset=vwmaOffset)
+plot(showAnchor ? anchor : na, "VWMA Anchor (Zero Line)", color=color.white, linewidth=2, offset=vwmaOffset)
 
 // MACD1
 plot(showLines1 ? m1Px : na, "Anchored MACD1", color=color.aqua, linewidth=2, offset=lineOffset1)
