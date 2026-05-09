@@ -1,0 +1,184 @@
+VOLUME-WEIGHTED-MACD-CLOUDS — CONTINUITY LOG
+Last updated: 2026-05-09 UTC
+
+============================================================
+
+WORKING RULES / PROCESS
+============================================================
+
+Repo path: /workspace/Volume-Weighted-MACD-Clouds
+
+Prefer fast discovery commands (rg), avoid slow recursive commands.
+
+If code changes are made:
+
+Commit changes on current branch.
+
+Create PR metadata (make_pr).
+
+Report summary + checks run.
+
+If no code changes are made:
+
+Do NOT create PR metadata.
+
+Always verify filenames directly in repo.
+
+Include exact commands used when reporting repo state.
+
+============================================================
+2) USER WORKFLOW PREFERENCE
+User opens a new chat frequently while iterating on repo updates.
+
+User wants a continuity note block that can be pasted into the next chat.
+
+============================================================
+3) CURRENT REPO SNAPSHOT
+Repo: /workspace/Volume-Weighted-MACD-Clouds
+
+Branch: work
+
+Files currently present:
+
+CLOUDS_TMUL_SCALED
+
+Volume Weighted MACD Clouds.txt
+
+CLOUDS
+
+VWMAMACDCLOUDS
+
+Latest commit shown in this environment:
+
+01040a5 Add Volume Weighted MACD Clouds v3 Pine Script indicator
+
+============================================================
+4) INDICATOR HISTORY (HIGH LEVEL)
+Started from a large Pine v6 indicator with:
+
+VWMA anchor
+
+six MACD stacks
+
+cloud/hist/line visuals
+
+condition engine (up to 5 setups x 10 conditions)
+
+signals + TP/SL + debug markers
+
+Iterated through multiple interpretation changes around timeframe handling.
+
+Added grouped candle overlay and then changed rendering approach.
+
+Added separation between cloud timeframe and candle timeframe.
+
+Added global master toggles for all major visual layers.
+
+============================================================
+5) CURRENT FUNCTIONAL DESIGN
+A) Timeframe controls
+
+Cloud Timeframe:
+
+Drives VWMA+MACD scaling behavior.
+
+Candles Timeframe:
+
+Drives grouped candle period boundaries.
+
+B) Clouds/MACD logic
+
+VWMA anchor uses Cloud Timeframe scaled length.
+
+MACD multipliers are scaled by Cloud Timeframe.
+
+C) Grouped candles
+
+Grouped candle rendering is overlay-only.
+
+Candle period is clock-aligned using timeframe boundary changes.
+
+Each grouped candle is drawn as one wide candle object:
+
+body via box
+
+wick via line
+
+Includes realtime updating of the currently forming grouped candle.
+
+D) Global master toggles
+
+Added global on/off toggles for:
+
+Clouds
+
+Lines
+
+Histograms
+
+Candles
+
+Per-series toggles still exist and now combine with global toggles.
+
+============================================================
+6) WHAT THIS MEANS PRACTICALLY
+You can independently tune cloud behavior and grouped-candle behavior.
+
+You can quickly disable whole visual layers without changing each MACD panel.
+
+Grouped candles now look like true larger candles, not repeated tiny HTF snapshots.
+
+============================================================
+7) QUICK CHECK COMMANDS FOR NEXT CHAT
+Run these first to re-establish context:
+
+git log --oneline --decorate -n 20
+git status --short
+rg --files
+nl -ba CLOUDS_TMUL_SCALED | sed -n '1,80p'
+nl -ba CLOUDS_TMUL_SCALED | sed -n '300,340p'
+nl -ba CLOUDS_TMUL_SCALED | sed -n '449,575p'
+rg -n "cloudTfMult|candleTfMult|showAll|groupedTf|timeframe.change\(" CLOUDS_TMUL_SCALED
+
+============================================================
+8) KNOWN CONTEXT / PITFALLS
+“Mode A vs Mode B” was a recurring source of confusion.
+
+Clarify in each new request whether changes should affect:
+
+overlay candles only, OR
+
+core cloud/MACD/VWMA calculations too.
+
+If behavior seems off, request a bar-by-bar example with timeframe + expected vs actual.
+
+============================================================
+9) SHORT HANDOFF BLOCK (FOR NEW CHAT)
+Repo: /workspace/Volume-Weighted-MACD-Clouds (branch: work)
+Target file: CLOUDS_TMUL_SCALED
+
+Current state:
+
+cloudTfMult controls cloud/VWMA/MACD scaling
+
+candleTfMult controls grouped candle boundaries
+
+grouped candles drawn as wide box/line candles with clock-aligned boundaries
+
+global toggles exist for all clouds, all lines, all histograms, all candles
+
+Please run:
+git log --oneline --decorate -n 20
+git status --short
+rg --files
+rg -n "cloudTfMult|candleTfMult|showAll|groupedTf|timeframe.change\(" CLOUDS_TMUL_SCALED
+
+============================================================
+10) COMMANDS USED TO BUILD THIS SUMMARY
+git log --oneline --decorate -n 20
+rg --files
+nl -ba CLOUDS_TMUL_SCALED | sed -n '1,60p'
+nl -ba CLOUDS_TMUL_SCALED | sed -n '307,340p'
+nl -ba CLOUDS_TMUL_SCALED | sed -n '449,575p'
+rg -n "groupedTf|candleTfMult|cloudTfMult|showAll" CLOUDS_TMUL_SCALED
+
